@@ -2288,7 +2288,13 @@ class MergerApp:
                                bg='white')
             cb.pack(side='left', padx=5)
 
-            # Group info
+            # Preview button - pack FIRST (right side) before info_frame expands
+            preview_btn = create_color_button(item_frame, text="Preview",
+                                             command=lambda gi=group_idx: self.preview_group(gi),
+                                             bg_color='#2196F3', font=('Arial', 9), padx=8, pady=3)
+            preview_btn.pack(side='right', padx=5, pady=5)
+
+            # Group info - pack AFTER preview button so it fills remaining space
             info_frame = tk.Frame(item_frame, bg='white')
             info_frame.pack(side='left', fill='x', expand=True)
 
@@ -2303,12 +2309,6 @@ class MergerApp:
             factors_text = ', '.join(group['match_factors'][:2])
             tk.Label(info_frame, text=f"{group['confidence']}% - {factors_text}",
                     font=('Arial', 9), fg='gray', bg='white', anchor='w').pack(fill='x')
-
-            # Preview button - use create_color_button for macOS
-            preview_btn = create_color_button(item_frame, text="Preview",
-                                             command=lambda gi=group_idx: self.preview_group(gi),
-                                             bg_color='#2196F3', font=('Arial', 9), padx=8, pady=3)
-            preview_btn.pack(side='right', padx=5, pady=5)
 
         canvas.pack(side='left', fill='both', expand=True)
         scrollbar.pack(side='right', fill='y')
