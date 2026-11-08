@@ -1,0 +1,1396 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>vCard Unmerger</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg-deep: #08090d;
+  --bg-base: #0e1017;
+  --bg-surface: #141620;
+  --bg-raised: #1a1d2a;
+  --bg-hover: #212436;
+  --border: #252840;
+  --border-active: #3d4160;
+  --text: #dfe1ef;
+  --text-dim: #8b8faa;
+  --text-faint: #555870;
+  --red: #ff4d6a;
+  --red-soft: rgba(255, 77, 106, 0.1);
+  --red-glow: rgba(255, 77, 106, 0.25);
+  --teal: #2dd4bf;
+  --teal-soft: rgba(45, 212, 191, 0.1);
+  --teal-glow: rgba(45, 212, 191, 0.25);
+  --blue: #6184ff;
+  --blue-soft: rgba(97, 132, 255, 0.1);
+  --amber: #f5a623;
+  --amber-soft: rgba(245, 166, 35, 0.1);
+  --radius: 10px;
+  --radius-lg: 16px;
+  --mono: 'Space Mono', monospace;
+  --sans: 'Outfit', -apple-system, sans-serif;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+html, body {
+  font-family: var(--sans);
+  background: var(--bg-deep);
+  color: var(--text);
+  height: 100%;
+  overflow: hidden;
+}
+
+::selection { background: var(--red); color: white; }
+::-webkit-scrollbar { width: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--border-active); }
+
+.app { display: flex; flex-direction: column; height: 100vh; }
+
+/* ── Header ─────────────────────────────── */
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 28px;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg-base);
+  flex-shrink: 0;
+  z-index: 100;
+}
+
+.logo { display: flex; align-items: center; gap: 14px; }
+
+.logo-icon {
+  width: 38px; height: 38px;
+  background: linear-gradient(135deg, var(--red), #ff8a5c);
+  border-radius: 10px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 18px;
+  box-shadow: 0 2px 16px rgba(255, 77, 106, 0.3);
+  position: relative;
+}
+
+.logo-icon::after {
+  content: '';
+  position: absolute;
+  inset: -1px;
+  border-radius: 11px;
+  background: linear-gradient(135deg, var(--red), #ff8a5c);
+  opacity: 0.4;
+  filter: blur(8px);
+  z-index: -1;
+}
+
+.logo-title {
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: -0.5px;
+}
+
+.logo-title span {
+  color: var(--text-faint);
+  font-weight: 400;
+  font-size: 14px;
+  margin-left: 6px;
+}
+
+.header-stats { display: flex; gap: 24px; }
+
+.header-stat { text-align: center; }
+
+.header-stat-value {
+  font-family: var(--mono);
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.header-stat-label {
+  font-size: 10px;
+  color: var(--text-faint);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.stat-red .header-stat-value { color: var(--red); }
+.stat-teal .header-stat-value { color: var(--teal); }
+.stat-blue .header-stat-value { color: var(--blue); }
+
+/* ── Screens ────────────────────────────── */
+.screen { display: none; flex: 1; overflow: hidden; flex-direction: column; }
+.screen.active { display: flex; }
+
+/* ── Upload Screen ──────────────────────── */
+.upload-screen {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 40px;
+  position: relative;
+}
+
+.upload-screen::before {
+  content: '';
+  position: absolute;
+  width: 600px; height: 600px;
+  background: radial-gradient(circle, rgba(255,77,106,0.04) 0%, transparent 70%);
+  top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+}
+
+.upload-container { max-width: 880px; width: 100%; position: relative; z-index: 1; }
+
+.upload-hero { text-align: center; margin-bottom: 48px; }
+
+.upload-hero h1 {
+  font-size: 44px;
+  font-weight: 800;
+  letter-spacing: -1.5px;
+  margin-bottom: 14px;
+  line-height: 1.1;
+}
+
+.upload-hero h1 .gradient {
+  background: linear-gradient(135deg, var(--red), #ff8a5c, var(--amber));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.upload-hero p {
+  font-size: 16px;
+  color: var(--text-dim);
+  max-width: 520px;
+  margin: 0 auto;
+  line-height: 1.7;
+  font-weight: 300;
+}
+
+.drop-zones {
+  display: grid;
+  grid-template-columns: 1fr 60px 1fr;
+  align-items: center;
+}
+
+.drop-zone {
+  border: 2px dashed var(--border);
+  border-radius: var(--radius-lg);
+  padding: 44px 28px;
+  text-align: center;
+  cursor: pointer;
+  background: var(--bg-surface);
+  transition: all 0.3s;
+  position: relative;
+  overflow: hidden;
+}
+
+.drop-zone::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  transition: opacity 0.3s;
+  pointer-events: none;
+}
+
+.drop-zone-merged::before {
+  background: linear-gradient(135deg, var(--blue-soft), transparent);
+}
+
+.drop-zone-subtract::before {
+  background: linear-gradient(135deg, var(--red-soft), transparent);
+}
+
+.drop-zone:hover, .drop-zone.dragover {
+  border-color: var(--border-active);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+}
+
+.drop-zone:hover::before, .drop-zone.dragover::before { opacity: 1; }
+
+.drop-zone.loaded {
+  border-style: solid;
+}
+
+.drop-zone-merged.loaded { border-color: var(--blue); }
+.drop-zone-subtract.loaded { border-color: var(--red); }
+
+.drop-zone-icon {
+  font-size: 42px;
+  margin-bottom: 16px;
+  display: block;
+}
+
+.drop-zone-label {
+  font-family: var(--mono);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  margin-bottom: 12px;
+  display: inline-block;
+  padding: 4px 10px;
+  border-radius: 6px;
+}
+
+.drop-zone-merged .drop-zone-label {
+  background: var(--blue-soft);
+  color: var(--blue);
+}
+
+.drop-zone-subtract .drop-zone-label {
+  background: var(--red-soft);
+  color: var(--red);
+}
+
+.drop-zone-title {
+  font-size: 16px;
+  font-weight: 600;
+  margin-bottom: 6px;
+}
+
+.drop-zone-sub {
+  font-size: 13px;
+  color: var(--text-faint);
+  line-height: 1.5;
+}
+
+.drop-zone-info {
+  margin-top: 14px;
+  font-family: var(--mono);
+  font-size: 13px;
+}
+
+.drop-zone-merged .drop-zone-info { color: var(--blue); }
+.drop-zone-subtract .drop-zone-info { color: var(--red); }
+
+.drop-zone input[type="file"] { display: none; }
+
+.drop-zone-operator {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+
+.operator-symbol {
+  width: 44px; height: 44px;
+  border-radius: 50%;
+  background: var(--bg-raised);
+  border: 2px solid var(--border);
+  display: flex; align-items: center; justify-content: center;
+  font-family: var(--mono);
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--red);
+}
+
+.operator-label {
+  font-size: 10px;
+  color: var(--text-faint);
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  font-family: var(--mono);
+}
+
+.upload-actions {
+  margin-top: 44px;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+}
+
+/* ── Buttons ────────────────────────────── */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 20px;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  background: var(--bg-raised);
+  color: var(--text);
+  font-family: var(--sans);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+
+.btn:hover { background: var(--bg-hover); border-color: var(--border-active); }
+.btn:disabled { opacity: 0.35; cursor: not-allowed; }
+
+.btn-primary {
+  background: var(--red);
+  border-color: var(--red);
+  color: white;
+  font-weight: 600;
+}
+
+.btn-primary:hover { background: #e84460; box-shadow: 0 4px 20px rgba(255,77,106,0.3); }
+
+.btn-large {
+  padding: 14px 44px;
+  font-size: 15px;
+  border-radius: 12px;
+}
+
+.btn-teal {
+  background: #0d9488;
+  border-color: #0d9488;
+  color: white;
+}
+
+.btn-teal:hover { background: #0f766e; box-shadow: 0 4px 20px rgba(45,212,191,0.2); }
+
+.btn-ghost { background: transparent; border-color: transparent; }
+.btn-ghost:hover { background: var(--bg-hover); border-color: var(--border); }
+
+/* ── Match Settings ─────────────────────── */
+.settings-row {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  color: var(--text-dim);
+  font-size: 13px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.settings-row label {
+  display: flex; align-items: center; gap: 6px; cursor: pointer;
+}
+
+.settings-row input[type="checkbox"] { accent-color: var(--red); }
+
+.match-mode {
+  display: flex;
+  gap: 4px;
+  background: var(--bg-surface);
+  border-radius: 8px;
+  padding: 3px;
+  border: 1px solid var(--border);
+}
+
+.match-mode-btn {
+  padding: 6px 14px;
+  border: none;
+  background: transparent;
+  color: var(--text-faint);
+  font-family: var(--sans);
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  border-radius: 6px;
+  transition: all 0.2s;
+}
+
+.match-mode-btn.active {
+  background: var(--bg-raised);
+  color: var(--text);
+  box-shadow: 0 1px 4px rgba(0,0,0,0.3);
+}
+
+.match-mode-btn:hover:not(.active) { color: var(--text-dim); }
+
+/* ── Review Screen ──────────────────────── */
+.review-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 24px;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg-base);
+  flex-shrink: 0;
+}
+
+.review-toolbar-left, .review-toolbar-right {
+  display: flex; align-items: center; gap: 12px;
+}
+
+.search-box {
+  display: flex; align-items: center; gap: 8px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 7px 14px;
+  width: 260px;
+  transition: border-color 0.2s;
+}
+
+.search-box:focus-within { border-color: var(--border-active); }
+
+.search-box input {
+  flex: 1; border: none; background: none; color: var(--text);
+  font-family: var(--sans); font-size: 13px; outline: none;
+}
+
+.search-box input::placeholder { color: var(--text-faint); }
+
+.filter-tabs { display: flex; gap: 4px; }
+
+.filter-tab {
+  padding: 6px 14px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text-dim);
+  font-family: var(--sans);
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.filter-tab:hover { background: var(--bg-hover); }
+
+.filter-tab.active {
+  background: var(--bg-raised);
+  color: var(--text);
+  border-color: var(--border-active);
+}
+
+.filter-tab .count {
+  font-family: var(--mono);
+  font-size: 11px;
+  margin-left: 4px;
+  opacity: 0.7;
+}
+
+/* ── Contact Lists ──────────────────────── */
+.review-content {
+  flex: 1;
+  overflow: hidden;
+  display: grid;
+  grid-template-columns: 1fr 1px 1fr;
+}
+
+.contact-pane {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.pane-header {
+  padding: 14px 20px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-shrink: 0;
+  background: var(--bg-base);
+}
+
+.pane-title {
+  font-size: 13px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.pane-title .dot {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  display: inline-block;
+}
+
+.dot-teal { background: var(--teal); box-shadow: 0 0 8px var(--teal-glow); }
+.dot-red { background: var(--red); box-shadow: 0 0 8px var(--red-glow); }
+
+.pane-count {
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--text-faint);
+}
+
+.contact-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 8px;
+}
+
+.contact-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px;
+  border-radius: var(--radius);
+  cursor: pointer;
+  transition: background 0.15s;
+  position: relative;
+}
+
+.contact-card:hover { background: var(--bg-hover); }
+
+.contact-card.matched {
+  background: var(--red-soft);
+  border-left: 3px solid var(--red);
+  padding-left: 11px;
+}
+
+.contact-avatar {
+  width: 36px; height: 36px;
+  border-radius: 8px;
+  background: var(--bg-raised);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-dim);
+  flex-shrink: 0;
+  border: 1px solid var(--border);
+}
+
+.contact-info { flex: 1; min-width: 0; }
+
+.contact-name {
+  font-size: 13px;
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.contact-detail {
+  font-size: 11px;
+  color: var(--text-faint);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-top: 1px;
+}
+
+.contact-badge {
+  font-family: var(--mono);
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  padding: 3px 8px;
+  border-radius: 5px;
+  flex-shrink: 0;
+}
+
+.badge-remove {
+  background: var(--red-soft);
+  color: var(--red);
+}
+
+.badge-keep {
+  background: var(--teal-soft);
+  color: var(--teal);
+}
+
+.badge-rescued {
+  background: var(--amber-soft);
+  color: var(--amber);
+}
+
+.divider-line {
+  background: var(--border);
+  width: 1px;
+}
+
+/* ── Contact Detail Popup ───────────────── */
+.detail-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.6);
+  z-index: 500;
+  align-items: center;
+  justify-content: center;
+  backdrop-filter: blur(4px);
+}
+
+.detail-overlay.active { display: flex; }
+
+.detail-card {
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 32px;
+  max-width: 440px;
+  width: 90%;
+  max-height: 80vh;
+  overflow-y: auto;
+  box-shadow: 0 24px 80px rgba(0,0,0,0.5);
+}
+
+.detail-header {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.detail-avatar {
+  width: 56px; height: 56px;
+  border-radius: 14px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 22px;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+.detail-avatar-keep { background: var(--teal-soft); color: var(--teal); border: 1px solid rgba(45,212,191,0.2); }
+.detail-avatar-remove { background: var(--red-soft); color: var(--red); border: 1px solid rgba(255,77,106,0.2); }
+
+.detail-name { font-size: 20px; font-weight: 700; letter-spacing: -0.3px; }
+.detail-status { font-size: 12px; margin-top: 2px; }
+.detail-status-keep { color: var(--teal); }
+.detail-status-remove { color: var(--red); }
+
+.detail-fields { display: flex; flex-direction: column; gap: 12px; }
+
+.detail-field {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.detail-field-label {
+  font-family: var(--mono);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  color: var(--text-faint);
+}
+
+.detail-field-value {
+  font-size: 14px;
+  color: var(--text);
+  word-break: break-all;
+}
+
+.detail-actions {
+  margin-top: 24px;
+  display: flex;
+  gap: 10px;
+}
+
+/* ── Summary Bar ────────────────────────── */
+.summary-bar {
+  padding: 14px 24px;
+  border-top: 1px solid var(--border);
+  background: var(--bg-base);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-shrink: 0;
+}
+
+.summary-left {
+  display: flex; gap: 24px;
+}
+
+.summary-stat {
+  display: flex; align-items: center; gap: 8px;
+  font-size: 13px;
+}
+
+.summary-stat .dot { width: 6px; height: 6px; border-radius: 50%; }
+
+.summary-right { display: flex; gap: 10px; }
+
+/* ── Animations ─────────────────────────── */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes slideIn {
+  from { opacity: 0; transform: translateX(-10px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+.contact-card {
+  animation: slideIn 0.2s ease both;
+}
+
+.upload-hero { animation: fadeIn 0.6s ease both; }
+.drop-zones { animation: fadeIn 0.6s ease 0.15s both; }
+.upload-actions { animation: fadeIn 0.6s ease 0.3s both; }
+
+/* ── Empty State ────────────────────────── */
+.empty-state {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-faint);
+  gap: 8px;
+  padding: 40px;
+}
+
+.empty-state-icon { font-size: 36px; opacity: 0.5; }
+.empty-state-text { font-size: 14px; }
+
+/* ── Toast ──────────────────────────────── */
+.toast {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%) translateY(80px);
+  background: var(--bg-raised);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 12px 24px;
+  font-size: 13px;
+  z-index: 1000;
+  transition: transform 0.3s ease;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.toast.show { transform: translateX(-50%) translateY(0); }
+
+/* ── Responsive ─────────────────────────── */
+@media (max-width: 768px) {
+  .drop-zones { grid-template-columns: 1fr; gap: 16px; }
+  .drop-zone-operator { flex-direction: row; }
+  .review-content { grid-template-columns: 1fr; grid-template-rows: 1fr 1px 1fr; }
+  .header-stats { display: none; }
+  .upload-hero h1 { font-size: 30px; }
+}
+</style>
+</head>
+<body>
+<div class="app">
+  <!-- Header -->
+  <div class="header">
+    <div class="logo">
+      <div class="logo-icon">✂️</div>
+      <div class="logo-title">vCard Unmerger <span>Separate your contacts</span></div>
+    </div>
+    <div class="header-stats" id="headerStats" style="display:none;">
+      <div class="header-stat stat-blue">
+        <div class="header-stat-value" id="statTotal">0</div>
+        <div class="header-stat-label">Merged</div>
+      </div>
+      <div class="header-stat stat-red">
+        <div class="header-stat-value" id="statRemove">0</div>
+        <div class="header-stat-label">Removing</div>
+      </div>
+      <div class="header-stat stat-teal">
+        <div class="header-stat-value" id="statKeep">0</div>
+        <div class="header-stat-label">Keeping</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Upload Screen -->
+  <div class="screen upload-screen active" id="uploadScreen">
+    <div class="upload-container">
+      <div class="upload-hero">
+        <h1>Undo the <span class="gradient">merge</span></h1>
+        <p>Load your merged contacts file and the file you want subtracted. We'll match by name and give you back only your contacts.</p>
+      </div>
+
+      <div class="drop-zones">
+        <!-- Merged File -->
+        <div class="drop-zone drop-zone-merged" id="dropMerged">
+          <input type="file" accept=".vcf,.vcard" id="fileMerged">
+          <span class="drop-zone-icon">📇</span>
+          <span class="drop-zone-label">Input</span>
+          <div class="drop-zone-title">Your Merged Contacts</div>
+          <div class="drop-zone-sub">The .vcf file with everyone mixed in</div>
+          <div class="drop-zone-info" id="infoMerged"></div>
+        </div>
+
+        <!-- Operator -->
+        <div class="drop-zone-operator">
+          <div class="operator-symbol">−</div>
+          <div class="operator-label">minus</div>
+        </div>
+
+        <!-- Subtract File -->
+        <div class="drop-zone drop-zone-subtract" id="dropSubtract">
+          <input type="file" accept=".vcf,.vcard" id="fileSubtract">
+          <span class="drop-zone-icon">🚫</span>
+          <span class="drop-zone-label">Subtract</span>
+          <div class="drop-zone-title">Phyllis's Contacts</div>
+          <div class="drop-zone-sub">The contacts you want removed</div>
+          <div class="drop-zone-info" id="infoSubtract"></div>
+        </div>
+      </div>
+
+      <div class="upload-actions">
+        <button class="btn btn-primary btn-large" id="btnProcess" disabled>
+          ✂️ Unmerge Contacts
+        </button>
+        <div class="settings-row">
+          <span>Match by:</span>
+          <div class="match-mode">
+            <button class="match-mode-btn active" data-mode="name">Name</button>
+            <button class="match-mode-btn" data-mode="phone">Phone</button>
+            <button class="match-mode-btn" data-mode="either">Either</button>
+            <button class="match-mode-btn" data-mode="both">Both</button>
+          </div>
+          <label>
+            <input type="checkbox" id="chkFuzzy" checked>
+            Fuzzy matching
+          </label>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Review Screen -->
+  <div class="screen review-screen" id="reviewScreen">
+    <div class="review-toolbar">
+      <div class="review-toolbar-left">
+        <button class="btn btn-ghost" id="btnBack">← Back</button>
+        <div class="search-box">
+          <span>🔍</span>
+          <input type="text" placeholder="Search contacts..." id="searchInput">
+        </div>
+        <div class="filter-tabs">
+          <button class="filter-tab active" data-filter="all">All <span class="count" id="countAll">0</span></button>
+          <button class="filter-tab" data-filter="keep">Keeping <span class="count" id="countKeep">0</span></button>
+          <button class="filter-tab" data-filter="remove">Removing <span class="count" id="countRemove">0</span></button>
+          <button class="filter-tab" data-filter="rescued">Rescued <span class="count" id="countRescued">0</span></button>
+        </div>
+      </div>
+      <div class="review-toolbar-right">
+        <button class="btn" id="btnPreview">👁 Preview</button>
+      </div>
+    </div>
+
+    <div class="review-content">
+      <!-- Keep pane -->
+      <div class="contact-pane">
+        <div class="pane-header">
+          <div class="pane-title"><span class="dot dot-teal"></span> Keeping</div>
+          <div class="pane-count" id="keepPaneCount">0 contacts</div>
+        </div>
+        <div class="contact-list" id="keepList"></div>
+      </div>
+
+      <div class="divider-line"></div>
+
+      <!-- Remove pane -->
+      <div class="contact-pane">
+        <div class="pane-header">
+          <div class="pane-title"><span class="dot dot-red"></span> Removing</div>
+          <div class="pane-count" id="removePaneCount">0 contacts</div>
+        </div>
+        <div class="contact-list" id="removeList"></div>
+      </div>
+    </div>
+
+    <div class="summary-bar">
+      <div class="summary-left">
+        <div class="summary-stat">
+          <span class="dot dot-teal"></span>
+          <span><strong id="summaryKeep">0</strong> contacts to keep</span>
+        </div>
+        <div class="summary-stat">
+          <span class="dot dot-red"></span>
+          <span><strong id="summaryRemove">0</strong> contacts to remove</span>
+        </div>
+      </div>
+      <div class="summary-right">
+        <button class="btn btn-teal" id="btnExport">
+          💾 Export My Contacts
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Detail Overlay -->
+<div class="detail-overlay" id="detailOverlay">
+  <div class="detail-card" id="detailCard"></div>
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<script>
+// ── State ──────────────────────────────────
+let mergedVCards = [];
+let subtractVCards = [];
+let results = { keep: [], remove: [] };
+let matchMode = 'name';
+let fuzzyMatch = true;
+let activeFilter = 'all';
+let searchQuery = '';
+
+// ── vCard Parser ───────────────────────────
+function parseVCards(text) {
+  const cards = [];
+  const raw = text.replace(/\r\n[ \t]/g, '').replace(/\r/g, '\n');
+  const blocks = raw.split(/(?=BEGIN:VCARD)/i);
+
+  for (const block of blocks) {
+    const trimmed = block.trim();
+    if (!trimmed.startsWith('BEGIN:VCARD')) continue;
+
+    const card = { raw: trimmed, fields: {} };
+    const lines = trimmed.split('\n');
+
+    for (const line of lines) {
+      const sepIdx = line.indexOf(':');
+      if (sepIdx < 0) continue;
+      const key = line.substring(0, sepIdx).split(';')[0].toUpperCase();
+      const val = line.substring(sepIdx + 1).trim();
+      if (!val) continue;
+
+      if (key === 'TEL') {
+        if (!card.fields.TEL) card.fields.TEL = [];
+        card.fields.TEL.push(val);
+      } else if (key === 'EMAIL') {
+        if (!card.fields.EMAIL) card.fields.EMAIL = [];
+        card.fields.EMAIL.push(val);
+      } else {
+        card.fields[key] = val;
+      }
+    }
+
+    // Derive display name
+    card.fn = card.fields.FN || '';
+    if (!card.fn && card.fields.N) {
+      const parts = card.fields.N.split(';');
+      card.fn = [parts[1], parts[0]].filter(Boolean).join(' ').trim();
+    }
+    card.fn = card.fn || '(No Name)';
+    card.phones = (card.fields.TEL || []).map(normalizePhone);
+    card.emails = card.fields.EMAIL || [];
+    card.org = card.fields.ORG || '';
+
+    cards.push(card);
+  }
+
+  return cards;
+}
+
+function normalizePhone(p) {
+  return p.replace(/[^0-9+]/g, '').replace(/^\+?1/, '');
+}
+
+function normalizeName(n) {
+  return n.toLowerCase().replace(/[^a-z0-9]/g, ' ').replace(/\s+/g, ' ').trim();
+}
+
+// ── Fuzzy name matching ────────────────────
+function levenshtein(a, b) {
+  const m = a.length, n = b.length;
+  if (m === 0) return n;
+  if (n === 0) return m;
+  const dp = Array.from({ length: m + 1 }, () => new Array(n + 1));
+  for (let i = 0; i <= m; i++) dp[i][0] = i;
+  for (let j = 0; j <= n; j++) dp[0][j] = j;
+  for (let i = 1; i <= m; i++) {
+    for (let j = 1; j <= n; j++) {
+      dp[i][j] = a[i-1] === b[j-1]
+        ? dp[i-1][j-1]
+        : 1 + Math.min(dp[i-1][j], dp[i][j-1], dp[i-1][j-1]);
+    }
+  }
+  return dp[m][n];
+}
+
+function namesMatch(a, b) {
+  const na = normalizeName(a);
+  const nb = normalizeName(b);
+  if (na === nb) return true;
+  if (!fuzzyMatch) return false;
+
+  // Check if one contains the other
+  if (na.includes(nb) || nb.includes(na)) return true;
+
+  // Levenshtein with threshold
+  const maxLen = Math.max(na.length, nb.length);
+  if (maxLen === 0) return false;
+  const dist = levenshtein(na, nb);
+  const threshold = maxLen <= 6 ? 1 : Math.floor(maxLen * 0.2);
+  if (dist <= threshold) return true;
+
+  // Token-based: sorted tokens match
+  const tokA = na.split(' ').sort().join(' ');
+  const tokB = nb.split(' ').sort().join(' ');
+  if (tokA === tokB) return true;
+
+  return false;
+}
+
+function phonesMatch(phonesA, phonesB) {
+  for (const a of phonesA) {
+    for (const b of phonesB) {
+      if (a === b) return true;
+      // Last 7 digits match
+      if (a.length >= 7 && b.length >= 7 && a.slice(-7) === b.slice(-7)) return true;
+    }
+  }
+  return false;
+}
+
+// ── Matching Logic ─────────────────────────
+function isMatch(merged, subtract) {
+  const nameOk = namesMatch(merged.fn, subtract.fn);
+  const phoneOk = merged.phones.length > 0 && subtract.phones.length > 0 && phonesMatch(merged.phones, subtract.phones);
+
+  switch (matchMode) {
+    case 'name': return nameOk;
+    case 'phone': return phoneOk;
+    case 'either': return nameOk || phoneOk;
+    case 'both': return nameOk && phoneOk;
+    default: return nameOk;
+  }
+}
+
+function processContacts() {
+  results = { keep: [], remove: [] };
+
+  for (const contact of mergedVCards) {
+    const matched = subtractVCards.some(s => isMatch(contact, s));
+    contact._status = matched ? 'remove' : 'keep';
+    contact._matchedName = matched
+      ? subtractVCards.find(s => isMatch(contact, s))?.fn || ''
+      : '';
+
+    if (matched) {
+      results.remove.push(contact);
+    } else {
+      results.keep.push(contact);
+    }
+  }
+
+  // Sort alphabetically
+  results.keep.sort((a, b) => a.fn.localeCompare(b.fn));
+  results.remove.sort((a, b) => a.fn.localeCompare(b.fn));
+}
+
+// ── Rendering ──────────────────────────────
+function getInitials(name) {
+  const parts = name.replace(/[^a-zA-Z\s]/g, '').trim().split(/\s+/);
+  if (parts.length >= 2) return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+  return (name[0] || '?').toUpperCase();
+}
+
+function renderContactCard(contact) {
+  const detail = contact.phones[0] || contact.emails[0] || contact.org || '';
+  const status = contact._status;
+  const badgeClass = status === 'keep'
+    ? (contact._rescued ? 'badge-rescued' : 'badge-keep')
+    : 'badge-remove';
+  const badgeText = status === 'keep'
+    ? (contact._rescued ? 'rescued' : 'keep')
+    : 'remove';
+
+  const card = document.createElement('div');
+  card.className = `contact-card${status === 'remove' ? ' matched' : ''}`;
+  card.innerHTML = `
+    <div class="contact-avatar">${getInitials(contact.fn)}</div>
+    <div class="contact-info">
+      <div class="contact-name">${esc(contact.fn)}</div>
+      <div class="contact-detail">${esc(detail)}</div>
+    </div>
+    <span class="contact-badge ${badgeClass}">${badgeText}</span>
+  `;
+
+  card.addEventListener('click', () => showDetail(contact));
+  return card;
+}
+
+function esc(s) {
+  const el = document.createElement('span');
+  el.textContent = s;
+  return el.innerHTML;
+}
+
+function renderLists() {
+  const keepList = document.getElementById('keepList');
+  const removeList = document.getElementById('removeList');
+  keepList.innerHTML = '';
+  removeList.innerHTML = '';
+
+  const query = searchQuery.toLowerCase();
+
+  let keepFiltered = results.keep;
+  let removeFiltered = results.remove;
+
+  if (query) {
+    const matchesQuery = c => c.fn.toLowerCase().includes(query)
+      || c.phones.some(p => p.includes(query))
+      || c.emails.some(e => e.toLowerCase().includes(query))
+      || c.org.toLowerCase().includes(query);
+    keepFiltered = keepFiltered.filter(matchesQuery);
+    removeFiltered = removeFiltered.filter(matchesQuery);
+  }
+
+  if (activeFilter === 'keep' || activeFilter === 'rescued') {
+    removeFiltered = [];
+  }
+  if (activeFilter === 'remove') {
+    keepFiltered = [];
+  }
+  if (activeFilter === 'rescued') {
+    keepFiltered = keepFiltered.filter(c => c._rescued);
+  }
+
+  keepFiltered.forEach((c, i) => {
+    const el = renderContactCard(c);
+    el.style.animationDelay = `${Math.min(i * 0.02, 0.5)}s`;
+    keepList.appendChild(el);
+  });
+
+  removeFiltered.forEach((c, i) => {
+    const el = renderContactCard(c);
+    el.style.animationDelay = `${Math.min(i * 0.02, 0.5)}s`;
+    removeList.appendChild(el);
+  });
+
+  if (!keepFiltered.length) {
+    keepList.innerHTML = '<div class="empty-state"><span class="empty-state-icon">📭</span><span class="empty-state-text">No contacts here</span></div>';
+  }
+  if (!removeFiltered.length) {
+    removeList.innerHTML = '<div class="empty-state"><span class="empty-state-icon">✨</span><span class="empty-state-text">Nothing to remove</span></div>';
+  }
+
+  updateCounts();
+}
+
+function updateCounts() {
+  const rescued = results.keep.filter(c => c._rescued).length;
+  const keepCount = results.keep.length;
+  const removeCount = results.remove.length;
+  const total = keepCount + removeCount;
+
+  document.getElementById('statTotal').textContent = total;
+  document.getElementById('statRemove').textContent = removeCount;
+  document.getElementById('statKeep').textContent = keepCount;
+  document.getElementById('keepPaneCount').textContent = `${keepCount} contacts`;
+  document.getElementById('removePaneCount').textContent = `${removeCount} contacts`;
+  document.getElementById('summaryKeep').textContent = keepCount;
+  document.getElementById('summaryRemove').textContent = removeCount;
+  document.getElementById('countAll').textContent = total;
+  document.getElementById('countKeep').textContent = keepCount;
+  document.getElementById('countRemove').textContent = removeCount;
+  document.getElementById('countRescued').textContent = rescued;
+}
+
+// ── Detail Popup ───────────────────────────
+function showDetail(contact) {
+  const overlay = document.getElementById('detailOverlay');
+  const card = document.getElementById('detailCard');
+  const isKeep = contact._status === 'keep';
+
+  let fieldsHtml = '';
+  const addField = (label, val) => {
+    if (!val) return;
+    fieldsHtml += `
+      <div class="detail-field">
+        <div class="detail-field-label">${label}</div>
+        <div class="detail-field-value">${esc(val)}</div>
+      </div>`;
+  };
+
+  addField('Full Name', contact.fn);
+  addField('Organization', contact.org);
+  if (contact.phones.length) addField('Phone', contact.phones.join(', '));
+  if (contact.emails.length) addField('Email', contact.emails.join(', '));
+  if (contact.fields.ADR) addField('Address', contact.fields.ADR.replace(/;/g, ', '));
+  if (contact.fields.NOTE) addField('Notes', contact.fields.NOTE);
+  if (!isKeep) addField('Matched With', contact._matchedName);
+
+  const actionBtn = isKeep
+    ? `<button class="btn" onclick="toggleContact('${contact.fn}', 'remove')">Move to Remove →</button>`
+    : `<button class="btn" onclick="toggleContact('${contact.fn}', 'keep')">← Rescue to Keep</button>`;
+
+  card.innerHTML = `
+    <div class="detail-header">
+      <div class="detail-avatar ${isKeep ? 'detail-avatar-keep' : 'detail-avatar-remove'}">
+        ${getInitials(contact.fn)}
+      </div>
+      <div>
+        <div class="detail-name">${esc(contact.fn)}</div>
+        <div class="detail-status ${isKeep ? 'detail-status-keep' : 'detail-status-remove'}">
+          ${isKeep ? (contact._rescued ? '↩ Rescued' : '✓ Keeping') : '✕ Removing'}
+        </div>
+      </div>
+    </div>
+    <div class="detail-fields">${fieldsHtml}</div>
+    <div class="detail-actions">
+      ${actionBtn}
+      <button class="btn btn-ghost" onclick="closeDetail()">Close</button>
+    </div>
+  `;
+
+  overlay.classList.add('active');
+}
+
+function closeDetail() {
+  document.getElementById('detailOverlay').classList.remove('active');
+}
+
+function toggleContact(fn, targetStatus) {
+  const fromList = targetStatus === 'keep' ? results.remove : results.keep;
+  const toList = targetStatus === 'keep' ? results.keep : results.remove;
+
+  const idx = fromList.findIndex(c => c.fn === fn);
+  if (idx < 0) return;
+
+  const contact = fromList.splice(idx, 1)[0];
+  contact._status = targetStatus;
+  if (targetStatus === 'keep') contact._rescued = true;
+  else contact._rescued = false;
+
+  toList.push(contact);
+  toList.sort((a, b) => a.fn.localeCompare(b.fn));
+
+  closeDetail();
+  renderLists();
+  showToast(targetStatus === 'keep'
+    ? `✓ Rescued "${contact.fn}" to keep list`
+    : `✕ Moved "${contact.fn}" to remove list`
+  );
+}
+
+// ── Export ──────────────────────────────────
+function exportVCard() {
+  const output = results.keep.map(c => c.raw).join('\n');
+  const blob = new Blob([output], { type: 'text/vcard' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'my_contacts.vcf';
+  a.click();
+  URL.revokeObjectURL(url);
+  showToast(`💾 Exported ${results.keep.length} contacts`);
+}
+
+// ── Toast ──────────────────────────────────
+function showToast(msg) {
+  const toast = document.getElementById('toast');
+  toast.innerHTML = msg;
+  toast.classList.add('show');
+  clearTimeout(toast._timer);
+  toast._timer = setTimeout(() => toast.classList.remove('show'), 3000);
+}
+
+// ── File Loading ───────────────────────────
+function loadFile(file, target) {
+  return new Promise((resolve) => {
+    const reader = new FileReader();
+    reader.onload = e => {
+      const text = e.target.result;
+      const cards = parseVCards(text);
+
+      if (target === 'merged') {
+        mergedVCards = cards;
+        document.getElementById('infoMerged').textContent = `${cards.length} contacts loaded`;
+        document.getElementById('dropMerged').classList.add('loaded');
+      } else {
+        subtractVCards = cards;
+        document.getElementById('infoSubtract').textContent = `${cards.length} contacts loaded`;
+        document.getElementById('dropSubtract').classList.add('loaded');
+      }
+
+      document.getElementById('btnProcess').disabled = !(mergedVCards.length && subtractVCards.length);
+      resolve();
+    };
+    reader.readAsText(file);
+  });
+}
+
+// ── Wire Up Events ─────────────────────────
+document.addEventListener('DOMContentLoaded', () => {
+  // Drop zones
+  ['Merged', 'Subtract'].forEach(id => {
+    const zone = document.getElementById('drop' + id);
+    const input = document.getElementById('file' + id);
+    const target = id.toLowerCase() === 'merged' ? 'merged' : 'subtract';
+
+    zone.addEventListener('click', () => input.click());
+    zone.addEventListener('dragover', e => { e.preventDefault(); zone.classList.add('dragover'); });
+    zone.addEventListener('dragleave', () => zone.classList.remove('dragover'));
+    zone.addEventListener('drop', e => {
+      e.preventDefault();
+      zone.classList.remove('dragover');
+      if (e.dataTransfer.files[0]) loadFile(e.dataTransfer.files[0], target);
+    });
+    input.addEventListener('change', () => {
+      if (input.files[0]) loadFile(input.files[0], target);
+    });
+  });
+
+  // Process button
+  document.getElementById('btnProcess').addEventListener('click', () => {
+    processContacts();
+    document.getElementById('uploadScreen').classList.remove('active');
+    document.getElementById('reviewScreen').classList.add('active');
+    document.getElementById('headerStats').style.display = 'flex';
+    renderLists();
+  });
+
+  // Back button
+  document.getElementById('btnBack').addEventListener('click', () => {
+    document.getElementById('reviewScreen').classList.remove('active');
+    document.getElementById('uploadScreen').classList.add('active');
+    document.getElementById('headerStats').style.display = 'none';
+  });
+
+  // Search
+  document.getElementById('searchInput').addEventListener('input', e => {
+    searchQuery = e.target.value;
+    renderLists();
+  });
+
+  // Filter tabs
+  document.querySelectorAll('.filter-tab').forEach(tab => {
+    tab.addEventListener('click', () => {
+      document.querySelectorAll('.filter-tab').forEach(t => t.classList.remove('active'));
+      tab.classList.add('active');
+      activeFilter = tab.dataset.filter;
+      renderLists();
+    });
+  });
+
+  // Match mode
+  document.querySelectorAll('.match-mode-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.match-mode-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      matchMode = btn.dataset.mode;
+    });
+  });
+
+  // Fuzzy
+  document.getElementById('chkFuzzy').addEventListener('change', e => {
+    fuzzyMatch = e.target.checked;
+  });
+
+  // Export
+  document.getElementById('btnExport').addEventListener('click', exportVCard);
+
+  // Preview (re-export for inspection)
+  document.getElementById('btnPreview').addEventListener('click', () => {
+    const preview = results.keep.slice(0, 5).map(c => c.fn).join(', ');
+    const more = results.keep.length > 5 ? ` and ${results.keep.length - 5} more...` : '';
+    showToast(`Preview: ${preview}${more}`);
+  });
+
+  // Detail overlay close
+  document.getElementById('detailOverlay').addEventListener('click', e => {
+    if (e.target === e.currentTarget) closeDetail();
+  });
+
+  // Escape to close
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape') closeDetail();
+  });
+});
+</script>
+</body>
+</html>
